@@ -1,37 +1,50 @@
 import os
 import sys
+import argparse
+import requests
 
-from openai import OpenAI
 
-
-def chat(prompt: str) -> str:
-    """Send a prompt to OpenRouter using the OpenAI SDK."""
+def chat(prompt: str, model: str) -> str:
+    """Send a prompt to OpenRouter using a direct HTTP request."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise EnvironmentError(
             "Please set the OPENROUTER_API_KEY environment variable."
         )
 
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
 
-    completion = client.chat.completions.create(
-        model="mistral/mistral-7b-instruct",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ],
+    data = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    res = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions", json=data, headers=headers
     )
-
-    return completion.choices[0].message.content
+    res.raise_for_status()
+    j = res.json()
+    return j.get("choices", [{}])[0].get("message", {}).get("content", "")
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python snbd_chat_helper.py \"Your question\"")
-        return
-    prompt = " ".join(sys.argv[1:])
+    parser = argparse.ArgumentParser(description="SNBD chat helper using OpenRouter")
+    parser.add_argument("prompt", nargs="+", help="Prompt text")
+    parser.add_argument(
+        "-m",
+        "--model",
+        default="mistral/mistral-7b-instruct",
+        help="Model to use",
+    )
+    args = parser.parse_args()
+
+    prompt = " ".join(args.prompt)
+
     try:
-        reply = chat(prompt)
+        reply = chat(prompt, args.model)
         print(reply)
     except Exception as e:
         print(f"Error: {e}")
