@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNBD Host Chat Helper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-black text-gray-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, Fragment } = React;
+
+    function Sidebar() {
+      const navItems = [
+        { label: 'Home', icon: 'home' },
+        { label: 'Chats', icon: 'message-circle' },
+        { label: 'Models', icon: 'cpu' },
+        { label: 'API Settings', icon: 'key' },
+        { label: 'Support & Guide', icon: 'help-circle' },
+      ];
+      return (
+        <div className="hidden md:flex flex-col justify-between bg-[#141414] w-56 p-4" style={{minHeight:'100vh'}}>
+          <div>
+            <div className="text-xl font-semibold mb-8 flex items-center gap-2">
+              <span className="bg-white rounded-full w-8 h-8"></span>
+              SNBD Host
+            </div>
+            <nav className="space-y-4">
+              {navItems.map(item => (
+                <div key={item.label} className="flex items-center gap-3 cursor-pointer hover:text-white">
+                  <i data-lucide={item.icon}></i>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+              <button className="mt-6 w-full bg-[#1ed760] text-black font-medium py-2 rounded hover:bg-opacity-80 transition">Create New</button>
+            </nav>
+          </div>
+          <div className="text-sm border-t border-gray-700 pt-4">
+            <div>User Email</div>
+            <div className="text-gray-400">Free Plan</div>
+            <button className="mt-2 text-red-500">Logout & Switch</button>
+          </div>
+        </div>
+      );
+    }
+
+    function FeatureCard({icon, title}) {
+      return (
+        <div className="bg-[#1e1e1e] p-4 rounded-lg flex items-center gap-3">
+          <i data-lucide={icon}></i>
+          <span>{title}</span>
+        </div>
+      );
+    }
+
+    function MainPanel({drafts}) {
+      const features = [
+        { icon: 'link', title: 'Connect with API' },
+        { icon: 'sliders', title: 'Select Model' },
+        { icon: 'message-circle', title: 'Send Message' },
+        { icon: 'bot', title: 'View AI Response' },
+      ];
+      return (
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto" style={{maxHeight:'100vh'}}>
+          <div>
+            <h1 className="text-2xl font-semibold">Unleash the power of SNBD AI</h1>
+            <p className="text-gray-400">Use DeepSeek, Mistral and other free models. Customize workflows, get answers, and power your SNBD project.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {features.map(f => <FeatureCard key={f.title} icon={f.icon} title={f.title} />)}
+          </div>
+          <div>
+            <h2 className="text-xl font-medium mb-2">Drafts</h2>
+            <ul className="space-y-2 text-gray-400">
+              {drafts.map((d, idx) => <li key={idx}>- {d}</li>)}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    function RightPanel({apiKey, setApiKey, model, setModel, messages, setMessages, sending, setSending}) {
+      const [input, setInput] = useState('');
+      const apiConnected = apiKey.trim() !== '';
+
+      function handleSend() {
+        if (!input.trim()) return;
+        const newMessages = [...messages, {role:'user', content:input}];
+        setMessages(newMessages);
+        setSending(true);
+        setInput('');
+        setTimeout(() => {
+          setMessages(prev => [...prev, {role:'assistant', content:`(${model}) Echo: ${input}` }]);
+          setSending(false);
+        }, 1000);
+      }
+
+      return (
+        <div className="bg-[#1e1e1e] w-full md:w-80 p-4 flex flex-col" style={{maxHeight:'100vh'}}>
+          <div className="space-y-4 flex-1 overflow-y-auto">
+            <div>
+              <label className="text-sm">API Key</label>
+              <input value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Enter API Key" className="w-full mt-1 p-2 rounded bg-[#141414]" />
+              <div className="text-sm mt-1">Status: <span className={apiConnected ? 'text-green-500' : 'text-red-500'}>{apiConnected ? 'connected' : 'disconnected'}</span></div>
+            </div>
+            <div>
+              <label className="text-sm">Model</label>
+              <select value={model} onChange={e => setModel(e.target.value)} className="w-full mt-1 p-2 rounded bg-[#141414]">
+                <option value="deepseek">DeepSeek</option>
+                <option value="mistral">Mistral</option>
+                <option value="openchat">OpenChat 7B</option>
+              </select>
+            </div>
+            <div className="border-t border-gray-700 pt-4 space-y-2">
+              <h3 className="font-medium">Chat</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {messages.map((m, i) => (
+                  <div key={i} className={m.role==='user'? 'text-right' : ''}>
+                    <span className="inline-block bg-[#141414] px-3 py-2 rounded-lg">{m.content}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex">
+                <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){handleSend();}}} placeholder="Type a message" className="flex-1 p-2 rounded-l bg-[#141414]" />
+                <button onClick={handleSend} className="bg-[#e50914] px-4 rounded-r hover:bg-opacity-80 transition">{sending? '...' : 'Send'}</button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-gray-700 pt-4 text-sm text-gray-400">
+            <div className="mb-2 font-medium text-white">Trending Models</div>
+            <ul className="space-y-1 mb-3">
+              <li>DeepSeek R1</li>
+              <li>OpenChat 7B</li>
+            </ul>
+            <div className="mb-1 font-medium text-white">Capabilities</div>
+            <ul className="list-disc list-inside">
+              <li>Natural language understanding</li>
+              <li>Workflow automation</li>
+              <li>Streaming responses</li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [apiKey, setApiKey] = useState(localStorage.getItem('apiKey') || '');
+      const [model, setModel] = useState('deepseek');
+      const [messages, setMessages] = useState([]);
+      const [sending, setSending] = useState(false);
+      const drafts = ['What is DeepSeek?', 'Explain Mistral advantages'];
+
+      useEffect(() => { localStorage.setItem('apiKey', apiKey); }, [apiKey]);
+
+      useEffect(() => { lucide.createIcons(); });
+
+      return (
+        <div className="flex" style={{minHeight:'100vh'}}>
+          <Sidebar />
+          <MainPanel drafts={drafts} />
+          <RightPanel apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} messages={messages} setMessages={setMessages} sending={sending} setSending={setSending} />
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
