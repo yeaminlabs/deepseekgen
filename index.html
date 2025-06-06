@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SNBD Host Chat Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-xl bg-white p-6 rounded shadow">
+        <h1 class="text-2xl font-bold mb-4">SNBD Host Chat Helper</h1>
+        <p class="mb-4">Hello, world!</p>
+        <label class="block mb-2 text-sm font-semibold">API Key
+            <input type="password" id="apiKey" class="w-full border rounded p-2" />
+        </label>
+        <button onclick="connect()" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded mb-4">Connect</button>
+        <div id="modelWrapper" class="hidden mb-4">
+            <label class="block mb-2 text-sm font-semibold">Model
+                <select id="modelSelect" class="w-full border rounded p-2"></select>
+            </label>
+        </div>
+        <textarea id="prompt" rows="4" class="w-full border rounded p-2 mb-4" placeholder="Enter your prompt"></textarea>
+        <button onclick="sendPrompt()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">Send</button>
+        <pre id="response" class="whitespace-pre-wrap mt-4"></pre>
+    </div>
+    <script>
+        let apiKey = '';
+
+        async function connect() {
+            apiKey = document.getElementById('apiKey').value.trim();
+            const wrapper = document.getElementById('modelWrapper');
+            const select = document.getElementById('modelSelect');
+            try {
+                const res = await fetch('https://openrouter.ai/api/v1/models', {
+                    headers: { 'Authorization': 'Bearer ' + apiKey }
+                });
+                const data = await res.json();
+                select.innerHTML = '';
+                (data.data || []).forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id || m.model || '';
+                    opt.textContent = m.name || m.id || m.model;
+                    select.appendChild(opt);
+                });
+                wrapper.classList.remove('hidden');
+            } catch (err) {
+                alert('Failed to fetch models: ' + err);
+            }
+        }
+
+        async function sendPrompt() {
+            const prompt = document.getElementById('prompt').value;
+            const output = document.getElementById('response');
+            const model = document.getElementById('modelSelect').value || 'mistral/mistral-7b-instruct';
+            output.textContent = 'Waiting for response...';
+            try {
+                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages: [
+                            { role: 'user', content: prompt }
+                        ]
+                    })
+                });
+                const data = await res.json();
+                output.textContent = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = 'Error: ' + err;
+            }
+        }
+    </script>
+</body>
+</html>
