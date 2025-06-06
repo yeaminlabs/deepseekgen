@@ -1,9 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Hello World</title>
+    <meta charset="utf-8">
+    <title>SNBD Host Chat Helper</title>
 </head>
 <body>
-    <h1>Hello World</h1>
+    <h1>SNBD Host Chat Helper (DeepSeek R1 via OpenRouter)</h1>
+    <label>API Key: <input type="password" id="apiKey"></label><br>
+    <textarea id="prompt" rows="4" cols="50" placeholder="Enter your prompt"></textarea><br>
+    <button onclick="sendPrompt()">Send</button>
+    <pre id="response"></pre>
+    <script>
+        async function sendPrompt() {
+            const key = document.getElementById('apiKey').value;
+            const prompt = document.getElementById('prompt').value;
+            const output = document.getElementById('response');
+            output.textContent = 'Waiting for response...';
+            try {
+                const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + key,
+                        'HTTP-Referer': 'https://github.com/example/deepseekgen',
+                        'X-Title': 'SNBD Host Helper'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-ai/deepseek-llm-r1',
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+                const data = await res.json();
+                output.textContent = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content : JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = 'Error: ' + err;
+            }
+        }
+    </script>
 </body>
 </html>
