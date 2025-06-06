@@ -8,6 +8,7 @@
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-xl bg-white p-6 rounded shadow">
         <h1 class="text-2xl font-bold mb-4">SNBD Host Chat Helper</h1>
+        <p class="mb-4">Hello, world!</p>
         <label class="block mb-2 text-sm font-semibold">API Key
             <input type="password" id="apiKey" class="w-full border rounded p-2" />
         </label>
@@ -25,14 +26,15 @@
                 const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + key,
-                        'HTTP-Referer': 'https://github.com/example/deepseekgen',
-                        'X-Title': 'SNBD Host Helper'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'openai/gpt-4o',
-                        messages: [{ role: 'user', content: prompt }]
+                        model: 'mistral/mistral-7b-instruct',
+                        messages: [
+                            { role: 'system', content: 'You are a helpful assistant.' },
+                            { role: 'user', content: prompt }
+                        ]
                     })
                 });
                 const data = await res.json();

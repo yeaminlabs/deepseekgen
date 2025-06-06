@@ -15,11 +15,7 @@ def chat(prompt: str) -> str:
     client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
     completion = client.chat.completions.create(
-        extra_headers={
-            "HTTP-Referer": "https://github.com/example/deepseekgen",
-            "X-Title": "SNBD Host Helper",
-        },
-        model="openai/gpt-4o",
+        model="mistral/mistral-7b-instruct",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
