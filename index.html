@@ -5,32 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
-<body class="bg-gray-900 text-gray-200 font-[Inter]">
-  <div id="root" class="h-screen flex items-center justify-center"></div>
+<body class="bg-dark text-light" style="font-family: 'Inter', sans-serif;">
+  <div id="root" class="d-flex align-items-center justify-content-center min-vh-100"></div>
   <script type="text/babel">
     const {useState, useEffect, useRef} = React;
 
-    const APIConnectBar = ({onConnect, loading}) => {
-      const [key, setKey] = useState('');
-      const submit = () => { if(key.trim()) onConnect(key); };
-      return (
-        <div className="flex flex-col items-center gap-4 transition-all">
-          <input className="px-3 py-2 w-72 rounded bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" type="password" placeholder="OpenRouter API Key" value={key} onChange={e=>setKey(e.target.value)} />
-          <button className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50" onClick={submit} disabled={loading}>
-            {loading ? 'Connecting...' : 'Connect'}
-          </button>
-        </div>
-      );
-    };
+    const API_KEY = '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';
 
     const ModelSelector = ({models, value, onChange}) => (
-      <select className="px-3 py-2 bg-gray-800 rounded w-full transition-all" value={value} onChange={e=>onChange(e.target.value)}>
+      <select className="form-select" value={value} onChange={e=>onChange(e.target.value)}>
         {models.map(m => <option key={m.id} value={m.id}>{m.id}</option>)}
       </select>
     );
@@ -38,8 +28,8 @@
     const ChatMessage = ({message}) => {
       const isUser = message.role === 'user';
       return (
-        <div className={"my-2 "+(isUser? 'text-right':'text-left')}>
-          <div className={"inline-block px-3 py-2 rounded "+(isUser? 'bg-indigo-600 text-white':'bg-gray-800 text-gray-200')}> 
+        <div className={'my-2 ' + (isUser ? 'text-end' : 'text-start')}>
+          <div className={'d-inline-block px-3 py-2 rounded ' + (isUser ? 'bg-primary text-white' : 'bg-secondary text-light')}>
             <span dangerouslySetInnerHTML={{__html: marked.parse(message.content)}} />
           </div>
         </div>
@@ -52,42 +42,44 @@
       useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[messages]);
       const send = () => { if(input.trim()){ onSend(input); setInput(''); } };
       return (
-        <div className="flex flex-col h-[60vh] w-full">
-          <div className="flex-1 overflow-y-auto mb-4 border border-gray-700 rounded p-4">
+        <div className="d-flex flex-column" style={{height:'60vh'}}>
+          <div className="flex-grow-1 overflow-auto mb-3 border rounded p-3 bg-body-secondary">
             {messages.map((m,i)=><ChatMessage key={i} message={m} />)}
-            {loading && <div className="text-sm text-gray-400">Waiting for response...</div>}
+            {loading && <div className="text-secondary small">Waiting for response...</div>}
             <div ref={endRef} />
           </div>
-          <div className="flex gap-2">
-            <textarea className="flex-1 bg-gray-800 p-2 rounded resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" value={input} onChange={e=>setInput(e.target.value)} placeholder="Type a message..." />
-            <button className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors" onClick={send}>Send</button>
+          <div className="d-flex gap-2">
+            <textarea className="form-control" rows="3" value={input} onChange={e=>setInput(e.target.value)} placeholder="Type a message..." />
+            <button className="btn btn-primary" onClick={send}>Send</button>
           </div>
         </div>
       );
     };
 
     const App = () => {
-      const [connected,setConnected] = useState(false);
-      const [loading,setLoading] = useState(false);
-      const [apiKey,setApiKey] = useState('');
       const [models,setModels] = useState([]);
       const [model,setModel] = useState('');
       const [messages,setMessages] = useState([]);
+      const [loading,setLoading] = useState(false);
+      const [search,setSearch] = useState('');
 
-      const connect = (key) => {
+      useEffect(()=>{
         setLoading(true);
-        fetch('https://openrouter.ai/api/v1/models',{headers:{Authorization:`Bearer ${key}`}})
-          .then(res=>{ if(!res.ok) throw new Error('Connection failed'); return res.json(); })
+        fetch('https://openrouter.ai/api/v1/models',{headers:{Authorization:`Bearer ${API_KEY}`}})
+          .then(res=>res.json())
           .then(data=>{
             const list = data.data || data.models || [];
-            setModels(list);
-            if(list[0]) setModel(list[0].id);
-            setConnected(true);
-            setApiKey(key);
+            const free = list.filter(m=>{
+              if(!m.pricing) return true;
+              const costs = Object.values(m.pricing);
+              return costs.every(v=>v===0);
+            });
+            setModels(free);
+            if(free[0]) setModel(free[0].id);
           })
-          .catch(err=>alert(err.message))
+          .catch(err=>console.error(err))
           .finally(()=>setLoading(false));
-      };
+      },[]);
 
       const send = (text) => {
         const userMsg = {role:'user', content:text};
@@ -98,7 +90,7 @@
           method:'POST',
           headers:{
             'Content-Type':'application/json',
-            'Authorization':`Bearer ${apiKey}`,
+            'Authorization':`Bearer ${API_KEY}`,
             'HTTP-Referer':'https://example.com',
             'X-Title':'AI Dashboard Demo'
           },
@@ -114,19 +106,27 @@
           .finally(()=>setLoading(false));
       };
 
+      const connected = models.length > 0;
+      const filtered = models.filter(m => m.id.toLowerCase().includes(search.toLowerCase()));
+
       return (
-        <div className="p-4 w-full max-w-3xl mx-auto">
-          {!connected ? (
-            <APIConnectBar onConnect={connect} loading={loading} />
-          ) : (
-            <div className="space-y-4 transition-all">
-              <div className="flex items-center justify-between">
-                <div>Connected ✅ – {models.length} models available</div>
-                <div className="w-60"><ModelSelector models={models} value={model} onChange={setModel} /></div>
+        <div className="container py-4" style={{maxWidth:'720px'}}>
+          {connected ? (
+            <>
+              <div className="mb-3">Connected ✅ – {models.length} free models available</div>
+              <div className="row g-2 mb-3">
+                <div className="col">
+                  <input type="text" className="form-control" placeholder="Search models" value={search} onChange={e=>setSearch(e.target.value)} />
+                </div>
+                <div className="col">
+                  <ModelSelector models={filtered} value={model} onChange={setModel} />
+                </div>
               </div>
               <ChatWindow messages={messages} onSend={send} loading={loading} />
-            </div>
-          )}
+            </>
+          ) : (
+            <div className="text-center">{loading ? 'Connecting...' : 'No models available'}</div>
+          )
         </div>
       );
     };
