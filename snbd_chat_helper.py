@@ -1,35 +1,32 @@
 import os
-import requests
-import json
 import sys
+
+from openai import OpenAI
 
 
 def chat(prompt: str) -> str:
-    """Send a prompt to the DeepSeek R1 model via OpenRouter API."""
+    """Send a prompt to OpenRouter using the OpenAI SDK."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise EnvironmentError("Please set the OPENROUTER_API_KEY environment variable.")
+        raise EnvironmentError(
+            "Please set the OPENROUTER_API_KEY environment variable."
+        )
 
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        # Optional headers recommended by OpenRouter
-        "HTTP-Referer": "https://github.com/example/deepseekgen",  # Update with your domain if needed
-        "X-Title": "SNBD Host Helper",
-    }
-    payload = {
-        "model": "deepseek-ai/deepseek-llm-r1",
-        "messages": [
+    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+
+    completion = client.chat.completions.create(
+        extra_headers={
+            "HTTP-Referer": "https://github.com/example/deepseekgen",
+            "X-Title": "SNBD Host Helper",
+        },
+        model="openai/gpt-4o",
+        messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ],
-    }
+    )
 
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+    return completion.choices[0].message.content
 
 
 def main():

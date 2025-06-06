@@ -3,13 +3,18 @@
 <head>
     <meta charset="utf-8">
     <title>SNBD Host Chat Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>SNBD Host Chat Helper (DeepSeek R1 via OpenRouter)</h1>
-    <label>API Key: <input type="password" id="apiKey"></label><br>
-    <textarea id="prompt" rows="4" cols="50" placeholder="Enter your prompt"></textarea><br>
-    <button onclick="sendPrompt()">Send</button>
-    <pre id="response"></pre>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-xl bg-white p-6 rounded shadow">
+        <h1 class="text-2xl font-bold mb-4">SNBD Host Chat Helper</h1>
+        <label class="block mb-2 text-sm font-semibold">API Key
+            <input type="password" id="apiKey" class="w-full border rounded p-2" />
+        </label>
+        <textarea id="prompt" rows="4" class="w-full border rounded p-2 mb-4" placeholder="Enter your prompt"></textarea>
+        <button onclick="sendPrompt()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">Send</button>
+        <pre id="response" class="whitespace-pre-wrap mt-4"></pre>
+    </div>
     <script>
         async function sendPrompt() {
             const key = document.getElementById('apiKey').value;
@@ -26,7 +31,7 @@
                         'X-Title': 'SNBD Host Helper'
                     },
                     body: JSON.stringify({
-                        model: 'deepseek-ai/deepseek-llm-r1',
+                        model: 'openai/gpt-4o',
                         messages: [{ role: 'user', content: prompt }]
                     })
                 });
