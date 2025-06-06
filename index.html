@@ -1,77 +1,137 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat Interface</title>
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      display: flex;
-      height: 100%;
-    }
-    .left-panel {
-      width: 20%;
-      background: #f5f5f5;
-      padding: 20px;
-    }
-    .right-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .chat {
-      width: 80%;
-      max-width: 600px;
-    }
-    .status {
-      margin-bottom: 10px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
-<body>
-  <div class="container">
-    <div class="left-panel">
-      <!-- left side could hold messages -->
-    </div>
-    <div class="right-panel" id="RightPanel">
-      <div id="connectArea"></div>
-      <div class="chat">
-        <textarea id="chatInput" placeholder="Type a message..." style="width:100%; height:100px;"></textarea>
-      </div>
-    </div>
-  </div>
-<script>
-  // Model options for the dropdown
-  const modelOptions = ['DeepSeek', 'Mistral', 'OpenChat 7B'];
-  let apiConnected = false;
-  const modelCount = modelOptions.length;
+<body class="bg-gray-900 text-gray-200 font-[Inter]">
+  <div id="root" class="h-screen flex items-center justify-center"></div>
+  <script type="text/babel">
+    const {useState, useEffect, useRef} = React;
 
-  const connectArea = document.getElementById('connectArea');
+    const APIConnectBar = ({onConnect, loading}) => {
+      const [key, setKey] = useState('');
+      const submit = () => { if(key.trim()) onConnect(key); };
+      return (
+        <div className="flex flex-col items-center gap-4 transition-all">
+          <input className="px-3 py-2 w-72 rounded bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" type="password" placeholder="OpenRouter API Key" value={key} onChange={e=>setKey(e.target.value)} />
+          <button className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50" onClick={submit} disabled={loading}>
+            {loading ? 'Connecting...' : 'Connect'}
+          </button>
+        </div>
+      );
+    };
 
-  function renderConnectArea() {
-    if (!apiConnected) {
-      connectArea.innerHTML = `
-        <input type="text" id="apiKey" placeholder="API Key" /><br/>
-        <select id="modelSelect">
-          ${modelOptions.map(o => `<option>${o}</option>`).join('')}
-        </select>
-        <button id="connectBtn">Connect</button>
-      `;
-      document.getElementById('connectBtn').onclick = () => {
-        apiConnected = true;
-        renderConnectArea();
+    const ModelSelector = ({models, value, onChange}) => (
+      <select className="px-3 py-2 bg-gray-800 rounded w-full transition-all" value={value} onChange={e=>onChange(e.target.value)}>
+        {models.map(m => <option key={m.id} value={m.id}>{m.id}</option>)}
+      </select>
+    );
+
+    const ChatMessage = ({message}) => {
+      const isUser = message.role === 'user';
+      return (
+        <div className={"my-2 "+(isUser? 'text-right':'text-left')}>
+          <div className={"inline-block px-3 py-2 rounded "+(isUser? 'bg-indigo-600 text-white':'bg-gray-800 text-gray-200')}> 
+            <span dangerouslySetInnerHTML={{__html: marked.parse(message.content)}} />
+          </div>
+        </div>
+      );
+    };
+
+    const ChatWindow = ({messages, onSend, loading}) => {
+      const [input, setInput] = useState('');
+      const endRef = useRef(null);
+      useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[messages]);
+      const send = () => { if(input.trim()){ onSend(input); setInput(''); } };
+      return (
+        <div className="flex flex-col h-[60vh] w-full">
+          <div className="flex-1 overflow-y-auto mb-4 border border-gray-700 rounded p-4">
+            {messages.map((m,i)=><ChatMessage key={i} message={m} />)}
+            {loading && <div className="text-sm text-gray-400">Waiting for response...</div>}
+            <div ref={endRef} />
+          </div>
+          <div className="flex gap-2">
+            <textarea className="flex-1 bg-gray-800 p-2 rounded resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" value={input} onChange={e=>setInput(e.target.value)} placeholder="Type a message..." />
+            <button className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 transition-colors" onClick={send}>Send</button>
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [connected,setConnected] = useState(false);
+      const [loading,setLoading] = useState(false);
+      const [apiKey,setApiKey] = useState('');
+      const [models,setModels] = useState([]);
+      const [model,setModel] = useState('');
+      const [messages,setMessages] = useState([]);
+
+      const connect = (key) => {
+        setLoading(true);
+        fetch('https://openrouter.ai/api/v1/models',{headers:{Authorization:`Bearer ${key}`}})
+          .then(res=>{ if(!res.ok) throw new Error('Connection failed'); return res.json(); })
+          .then(data=>{
+            const list = data.data || data.models || [];
+            setModels(list);
+            if(list[0]) setModel(list[0].id);
+            setConnected(true);
+            setApiKey(key);
+          })
+          .catch(err=>alert(err.message))
+          .finally(()=>setLoading(false));
       };
-    } else {
-      connectArea.innerHTML = `<div class="status">Connected ✅ – ${modelCount} models available</div>`;
-    }
 
-  renderConnectArea();
-</script>
+      const send = (text) => {
+        const userMsg = {role:'user', content:text};
+        const newMsgs = [...messages, userMsg];
+        setMessages(newMsgs);
+        setLoading(true);
+        fetch('https://openrouter.ai/api/v1/chat/completions',{
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'Authorization':`Bearer ${apiKey}`,
+            'HTTP-Referer':'https://example.com',
+            'X-Title':'AI Dashboard Demo'
+          },
+          body: JSON.stringify({model, messages:newMsgs})
+        })
+          .then(res=>res.json())
+          .then(data=>{
+            const reply = data.choices?.[0]?.message;
+            if(reply) setMessages(m=>[...m, reply]);
+            else throw new Error('No response');
+          })
+          .catch(err=>setMessages(m=>[...m,{role:'system',content:`Error: ${err.message}` }]))
+          .finally(()=>setLoading(false));
+      };
+
+      return (
+        <div className="p-4 w-full max-w-3xl mx-auto">
+          {!connected ? (
+            <APIConnectBar onConnect={connect} loading={loading} />
+          ) : (
+            <div className="space-y-4 transition-all">
+              <div className="flex items-center justify-between">
+                <div>Connected ✅ – {models.length} models available</div>
+                <div className="w-60"><ModelSelector models={models} value={model} onChange={setModel} /></div>
+              </div>
+              <ChatWindow messages={messages} onSend={send} loading={loading} />
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
 </body>
 </html>
